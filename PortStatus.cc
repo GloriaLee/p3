@@ -81,7 +81,8 @@ bool PortStatus :: processPong(
         return false;
     }
     sourceId = (unsigned short) ntohs(*((unsigned short*)pack + 2));
-    dly = systemTime - (unsigned int) ntohl(*((unsigned int*)packet + 2));
+    dly = (unsigned int) ntohl(*((unsigned int*)pack + 2));
+    dly = systemTime - dly;
     if (ports[portId].timeStamp < 0 || ports[portId].delay != dly || ports[portId].routerId != sourceId) {
         ports[portId].portNum = portId;
         ports[portId].routerId = sourceId;
@@ -89,7 +90,7 @@ bool PortStatus :: processPong(
         ports[portId].timeStamp = 0;
         return true;
     }
-    ports[port].timeStamp = 0;
+    ports[portId].timeStamp = 0;
     return false;
 }
 
