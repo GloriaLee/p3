@@ -163,11 +163,8 @@ bool Forwarding::parse_DV_packet(void* DV_packet, unsigned short size, unsigned 
   }
 
   to_clear.clear();
-  if (change != 0) {
-    return true;
-  }
-
-  return false;
+  
+  return change != 0;
 }
 
 // Update DV table when a Pong is received or any change in delay
@@ -231,11 +228,7 @@ bool Forwarding::update_DV_Table(
     }
   }
 
-  if (change != 0) {
-    return true;
-  }
-
-  return false;  
+  return change != 0;  
 }
 
 // Parse data packet function
@@ -321,8 +314,8 @@ bool Forwarding::parse_LS_packet(void* packet, unsigned short size) {
     F_Items[node_id].push_back(F_Item(node_id, cost, -1, seqNum));
   }
 
-  // return change == 1;
-  return false;
+  return change == 1;
+  // return false;
 }
 
 // Update F_Items table when received a Pong or any delay change is detected
