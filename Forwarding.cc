@@ -29,7 +29,7 @@ bool Forwarding::state_check() {
   for(it_map = F_Items.begin(); it_map != F_Items.end(); it_map++){
     if (!it_map->second.empty()){
       if (it_map->second[0].timestamp > REFRESH_THRESHOLD) {
-	to_clear.push_back(it_map->first);
+	      to_clear.push_back(it_map->first);
       }
     }
   }
@@ -43,11 +43,13 @@ bool Forwarding::state_check() {
   }
   
   to_clear.clear();
-  if (change != 0) {
-    return true;
-  }
 
-  return false;
+  return change == 1;
+  // if (change != 0) {
+  //   return true;
+  // }
+
+  // return false;
 }
 
 // Function to make DV packet
