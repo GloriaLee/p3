@@ -64,8 +64,8 @@ void* PortStatus :: buildPacket(unsigned int systemTime, unsigned short &packSiz
 void* PortStatus :: processPing(unsigned short portId, void *pack, unsigned short size) {
     *((unsigned char*)pack) = (char)2;
     unsigned short destination = (unsigned short) ntohs(*(unsigned short*)pack + 2);
-    *((unsigned short*)pack + 2) = (unsigned short) htons((unsigned short)destination);
-    *((unsigned short*)pack + 3) = (unsigned short) htons((unsigned short)routerId);
+    *((unsigned short*)pack + 3) = (unsigned short) htons((unsigned short)destination);
+    *((unsigned short*)pack + 2) = (unsigned short) htons((unsigned short)routerId);
     if (ports[portId].timeStamp > 0) {
         ports[portId].timeStamp = 0;
     }
