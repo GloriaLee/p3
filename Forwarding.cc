@@ -33,7 +33,8 @@ bool Forwarding::state_check() {
       }
     }
   }
-
+  
+  // Clear the outdated entries
   for(it_vec = to_clear.begin(); it_vec != to_clear.end(); it_vec++){
     if (*it_vec != r_id) {
       F_Items[*it_vec].clear();
@@ -97,7 +98,8 @@ bool Forwarding::parse_DV_packet(void* DV_packet, unsigned short size, unsigned 
 
   unsigned short sourceID = (unsigned short)ntohs(*((unsigned short*)DV_packet + 2));
   unsigned short num_entries = size / 4 - 2;
-
+  
+  // To track valid entries
   unordered_set<int> valid_entries;
 
   int i;
@@ -135,7 +137,7 @@ bool Forwarding::parse_DV_packet(void* DV_packet, unsigned short size, unsigned 
       }
     }    
   }
-
+  
   unordered_map<int, vector<F_Item>>::iterator it_map;
   vector<int> to_clear;
   vector<int>::iterator it_vec;
@@ -241,6 +243,7 @@ bool Forwarding::parse_Data_packet(void* data_packet, unsigned short size, unsig
     return true;
   }
   
+  // Get the next hop for the date packet
   if (F_Items.find(dest) != F_Items.end() && !F_Items[dest].empty()) {
     next_hop = F_Items[dest][0].next_hop;
     return true;
@@ -269,13 +272,13 @@ void* Forwarding::make_LS_packet(unsigned short& packSize) {
   char* packet;
   packSize = 4 * F_Items[r_id].size() + 12;
   packet = (char*)malloc(packSize);
-
+  
   *(unsigned char*)packet = 4;
   *((unsigned short*)packet + 1) = (unsigned short)htons((unsigned short)packSize);
   *((unsigned short*)packet + 2) = (unsigned short)htons((unsigned short)r_id);
-  *((unsigned int*)packet + 2) = (unsigned short)htonl((unsigned int)seq_num);
+  *((unsigned int*)packet + 2) = (unsigned int)htonl((unsigned int)seq_num);
 
-  // Offset is 6 in LS packet because it includes the seq number
+  // Offset is 6 bytes in LS packet because it includes the 2 bytes seq number
   int offset = 6;
   for (unsigned int i = 0; i < F_Items[r_id].size(); i++) {
     *((unsigned short*)packet + offset + 2 * i) = (unsigned short)htons((unsigned short)F_Items[r_id][i].dest);
@@ -288,6 +291,8 @@ void* Forwarding::make_LS_packet(unsigned short& packSize) {
 
 // Function to parse the LS packet
 bool Forwarding::parse_LS_packet(void* packet, unsigned short size) {
+  
+  // To indicate whether we need to flood LS packet
   int change = 0;
   if (*((unsigned char*)packet) != 4 || size < 12) {
     return false;
@@ -295,8 +300,9 @@ bool Forwarding::parse_LS_packet(void* packet, unsigned short size) {
 
   unsigned short source_id = (unsigned short)ntohs(*((unsigned short*)packet + 2));
   unsigned int seqNum = (unsigned int)ntohl(*((unsigned int*)packet + 2));
-
-  if (F_Items.find(source_id) != F_Items.end() && !F_Items[source_id].empty() && F_Items[source_id][0].seq_num >= seqNum) {
+  
+  // If the seq number was seen before, do not need to flood
+  if (F_Items.find(source_id) != F_Items.end() && !F_Items[source_id].empty() && F_Items[source_id][0].seq >= seqNum) {
     return false;
   }
 
@@ -311,19 +317,19 @@ bool Forwarding::parse_LS_packet(void* packet, unsigned short size) {
     unsigned short node_id = (unsigned short)ntohs(*((unsigned short*)packet + offset + 2 * i));
     unsigned short cost = (unsigned short)ntohs(*((unsigned short*)packet + offset + 1 + 2 * i));
 
-    F_Items[node_id].push_back(F_Item(node_id, cost, -1, seqNum));
+    F_Items[node_id].push_back(F_Item(node_id, cost, USHRT_MAX, seqNum));
   }
 
   return change == 1;
-  // return false;
 }
 
 // Update F_Items table when received a Pong or any delay change is detected
 bool Forwarding::update_LS_Table(unsigned short source_id, unsigned int cost) {
+
   for (unsigned int i = 0; i < F_Items.size(); i++) {
     if (F_Items[r_id][i].dest == source_id) {
       // This means the port link is broken, so remove the corresponding entry
-      if (cost == UINT_MAX) {
+      if (cost == USHRT_MAX) {
 	F_Items[r_id].erase(F_Items[r_id].begin() + i);
 	return true;
       }
@@ -346,11 +352,13 @@ bool Forwarding::update_path() {
   priority_queue<Dist_Pair, std::vector<Dist_Pair>, Compare> pq;
   unordered_set<int> visited;
   int max_id = 0;
-  
+  int min_id = USHRT_MAX;
+
   // Get the maximum number of router id in the table
   unordered_map<int, vector<F_Item>>::iterator it_map;
   for(it_map = F_Items.begin(); it_map != F_Items.end(); it_map++){
     max_id = max(max_id, it_map->first);
+    min_id = min(min_id, it_map->first);
   }
 
   // Record the previous node id to get to the destination
@@ -365,9 +373,11 @@ bool Forwarding::update_path() {
     parent[i] = USHRT_MAX;
   }
 
+
   dist[r_id] = 0;
   pq.push(Dist_Pair(r_id, 0));
 
+  // Use a priority queue to get the smallest distance to reach the router
   while (!pq.empty()) {
     Dist_Pair curr = pq.top();
     pq.pop();
@@ -395,10 +405,11 @@ bool Forwarding::update_path() {
   // Update the next hop for every destination starting from the current router
   for (it_map = F_Items.begin(); it_map != F_Items.end(); it_map++) {
     unsigned short target_id = it_map->first;
-    while (target_id >= 0 && target_id <= max_id && parent[target_id] != r_id) {
+    while (target_id <= max_id && target_id >= min_id && parent[target_id] != r_id) {
       target_id = parent[target_id];
     }
-
+    
+    // Change the next hop to the most direct parent
     if (!it_map->second.empty() && it_map->second[0].next_hop != target_id) {
       it_map->second[0].next_hop = target_id;
       change = 1;
@@ -411,4 +422,8 @@ bool Forwarding::update_path() {
 // Function to increase the sequence number
 void Forwarding::incSeq() {
   seq_num++;
+}
+
+unsigned short Forwarding::getSeq() {
+  return seq_num;
 }

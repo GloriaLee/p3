@@ -6,12 +6,12 @@
 
 struct F_Item {
   F_Item(){};
-  F_Item(unsigned short dest, unsigned int cost, unsigned short next_hop, unsigned int seq_num): dest(dest), cost(cost), next_hop(next_hop), timestamp(0), seq_num(seq_num) {};
+  F_Item(unsigned short dest, unsigned int cost, unsigned short next_hop, unsigned int seqNum): dest(dest), cost(cost), next_hop(next_hop), timestamp(0), seq(seqNum) {};
   unsigned short dest;
   unsigned int cost;
   unsigned short next_hop;
   short int timestamp;
-  unsigned int seq_num;
+  unsigned int seq;
 };
 
 struct Dist_Pair {
@@ -44,10 +44,11 @@ class Forwarding {
     bool update_LS_Table(unsigned short source_id, unsigned int cost);
     bool update_path();
     void incSeq();
+    unsigned short getSeq();
   private:
     eProtocolType pr;
     unsigned short r_id;
-    unsigned short seq_num;
+    unsigned short seq_num = 0;
     unordered_map<int, vector<F_Item>> F_Items;
 };
 

@@ -21,7 +21,7 @@ void RoutingProtocolImpl::init(unsigned short num_ports, unsigned short router_i
     P_table.setRouterId(router_id);
     F_table.set_routerId(router_id);
     F_table.set_protocol(protocol_type);
-    
+
     // Set up PING alarm, use int 0
     int* alarm = (int*)malloc(sizeof(int));
     *alarm = 0;
@@ -69,8 +69,10 @@ void RoutingProtocolImpl::handle_alarm(void *data) {
 	    if (F_table.state_check() && protocol == P_DV) {
 	      change = 1;
 	    }
-
+	    
+	    // Increase the timestamp in the port status table
             P_table.incTime();
+	    // Remove port entries in the invalide list
             if (P_table.checkStates(invalidList)) {
                 vector<unsigned short>::iterator it_vec;
                 for (it_vec = invalidList.begin(); it_vec != invalidList.end(); it_vec++) {
@@ -101,14 +103,15 @@ void RoutingProtocolImpl::handle_alarm(void *data) {
                         }
                     }
                 } else {
-		  F_table.update_path();
-		  unsigned short packSize;
-		  char* packet;
-		  
-		  for (int i = 0; i < P_table.getSize(); i++) {
-		    packet = (char*)F_table.make_LS_packet(packSize);
-		    sys->send(i, packet, packSize);
-		    F_table.incSeq();
+		  // Send updated LS packet if the shortest path changed
+		  if (F_table.update_path()) {
+		    unsigned short packSize;
+		    char* packet;
+		    for (int i = 0; i < P_table.getSize(); i++) {
+		      packet = (char*)F_table.make_LS_packet(packSize);
+		      sys->send(i, packet, packSize);
+		      F_table.incSeq();
+		    }
 		  }
                 }
             }
@@ -183,44 +186,46 @@ void RoutingProtocolImpl::recv(unsigned short port, void *packet, unsigned short
 	  unsigned short source_id;
 	  unsigned int curr_delay, prev_delay;
 	  
-	  bool changed = false;
+	  int change = 0;
 	  
+	  // Get the delay and compare with the previous delay to see if there is any update
 	  if (P_table.getDelay(port, prev_delay)) {
 	    P_table.processPong(port, packet, sys->time(), source_id, curr_delay);
 	    if (curr_delay != prev_delay) {
-	      changed = true;
+	      change = 1;
 	    }
 	  } else {
 	    P_table.processPong(port, packet, sys->time(), source_id, curr_delay);
 	    prev_delay = curr_delay;
-	    changed = true;
+	    change = 1;
 	  }
 	  
-	  printf("Current delay: %d\n", curr_delay);
-	  printf("Previous delay: %d\n", prev_delay);
-
-	  if (protocol == P_DV) {
-	    if (F_table.update_DV_Table(source_id, curr_delay, prev_delay, source_id)) {
-	      unsigned short packSize, target_id;
-	      char* pack;
-
-	      for (int i = 0; i < P_table.getSize(); i++) {
-		if (P_table.checkRouteIdFromPortNum(i, target_id)) {
-		  pack = (char*)F_table.make_DV_packet(target_id, packSize);
-		  sys->send(i, pack, packSize);
+	  // Send DV or LS packet if there is any delay change
+	  if (change == 1) {
+	    if (protocol == P_DV) {
+	      // Send updated DV packet to neighbor routers
+	      if (F_table.update_DV_Table(source_id, curr_delay, prev_delay, source_id)) {
+		unsigned short packSize, target_id;
+		char* pack;
+	      
+		for (int i = 0; i < P_table.getSize(); i++) {
+		  if (P_table.checkRouteIdFromPortNum(i, target_id)) {
+		    pack = (char*)F_table.make_DV_packet(target_id, packSize);
+		    sys->send(i, pack, packSize);
+		  }
 		}
 	      }
-	    }
-	  } else {
-	    if (changed) {
+	    } else {
 	      if (F_table.update_LS_Table(source_id, curr_delay)) {
-		F_table.update_path();
-		unsigned short packSize;
-		char* pack;
-		for (int i = 0; i < P_table.getSize(); i++) {
-		  pack = (char*)F_table.make_LS_packet(packSize);
-		  sys->send(i, pack, packSize);
-		  F_table.incSeq();
+		// Send updated LS packet to neighbor routers
+		if (F_table.update_path()) {
+		  unsigned short packSize;
+		  char* pack;
+		  for (int i = 0; i < P_table.getSize(); i++) {
+		    pack = (char*)F_table.make_LS_packet(packSize);
+		    sys->send(i, pack, packSize);
+		    F_table.incSeq();
+		  }
 		}
 	      }
 	    }
@@ -233,7 +238,6 @@ void RoutingProtocolImpl::recv(unsigned short port, void *packet, unsigned short
         case 3: {
             unsigned int delay;
             if (P_table.getDelay(port, delay)) {
-	      printf("DV delay: %d\n", delay);
                 if (F_table.parse_DV_packet(packet, size, delay)) {
                     unsigned short packSize, target_id;
                     char *pack;
@@ -252,16 +256,18 @@ void RoutingProtocolImpl::recv(unsigned short port, void *packet, unsigned short
 	  //LS
         case 4: {
 	  if (F_table.parse_LS_packet(packet, size)) {
-	    F_table.update_path();
+	    if (F_table.update_path()) {
 	    char* pack;
+	    // Send LS packet if the seq number has never been seen before
 	    for (int i = 0; i < P_table.getSize(); i++) {
 	      pack = (char*)malloc(size);
 	      memcpy(pack, packet, size);
 	      sys->send(i, pack, size);
 	    }
+	    }
 	  }
 	  free(packet);
-           break;
+          break;
         }
     }
 }
