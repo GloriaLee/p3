@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="WebServers">
+    <option name="servers">
+      <webServer id="511b64a6-eca7-480e-80bb-df0337f45057" name="Rice" url="http://cl77@ssh.clear.rice.edu">
+        <fileTransfer host="cl77@ssh.clear.rice.edu" port="22" rootFolder="/storage-home/c/cl77" accessType="SFTP">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" />
+          </advancedOptions>
+          <option name="port" value="22" />
+        </fileTransfer>
+      </webServer>
+    </option>
+  </component>
+</project>
