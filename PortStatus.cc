@@ -16,7 +16,7 @@ PortStatus :: ~PortStatus() {
 void PortStatus :: setPortNumbers(unsigned short num) {
     portNum = num;
     for (int i = 0; i < num; i++) {
-        ports.push_back(PortInfo(num, routerId, -1, -1));
+      ports.push_back(PortInfo(num, routerId, -1, -1));
     }
 }
 
@@ -56,7 +56,7 @@ void* PortStatus :: buildPacket(unsigned int systemTime, unsigned short &packSiz
     *(unsigned char*)pack = 1;
     *((unsigned short*)pack + 1) = (unsigned short)htons((unsigned short)packSize);
     *((unsigned short*)pack + 2) = (unsigned short)htons((unsigned short)routerId);
-    *((unsigned short*)pack + 2) = (unsigned int)htonl((unsigned int)systemTime);
+    *((unsigned int*)pack + 2) = (unsigned int)htonl((unsigned int)systemTime);
 
     return pack;
 }

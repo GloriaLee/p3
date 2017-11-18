@@ -25,7 +25,7 @@ public:
             unsigned short routerId,
             unsigned int delay,
             unsigned int timeStamp
-        ) : portNum(portNum), routerId(routerId), delay(delay), timeStamp(-1) {};
+		 ) : portNum(portNum), routerId(routerId), delay(delay), timeStamp(-1) {};
     };
 
     void setPortNumbers(unsigned short ports);

@@ -158,12 +158,18 @@ void RoutingProtocolImpl::recv(unsigned short port, void *packet, unsigned short
         case 0: {
             unsigned short target_id, target_port;
             if (F_table.parse_Data_packet(packet, size, target_id)) {
-	      // Send to the corresponding target_id via target_port
-                if (target_id != r_id && P_table.checkPortNumFromRouteId(target_id, target_port)) {
-                    sys->send(target_port, packet, size);
-                }
-            }
-	    free(packet);
+	      if (target_id == r_id) {
+		// Reached destination
+		free(packet);
+	      } else if (P_table.checkPortNumFromRouteId(target_id, target_port)) {
+		// Send to the corresponding target_id via target_port
+		sys->send(target_port, packet, size);
+	      } else {
+		free(packet);
+	      }
+	    } else {
+	      free(packet);
+	    }
             break;
         }
             //PING
@@ -173,7 +179,7 @@ void RoutingProtocolImpl::recv(unsigned short port, void *packet, unsigned short
             break;
         }
             //PONG
-        case 5: {
+        case 2: {
 	  unsigned short source_id;
 	  unsigned int curr_delay, prev_delay;
 	  
@@ -189,6 +195,9 @@ void RoutingProtocolImpl::recv(unsigned short port, void *packet, unsigned short
 	    prev_delay = curr_delay;
 	    changed = true;
 	  }
+	  
+	  printf("Current delay: %d\n", curr_delay);
+	  printf("Previous delay: %d\n", prev_delay);
 
 	  if (protocol == P_DV) {
 	    if (F_table.update_DV_Table(source_id, curr_delay, prev_delay, source_id)) {
@@ -224,6 +233,7 @@ void RoutingProtocolImpl::recv(unsigned short port, void *packet, unsigned short
         case 3: {
             unsigned int delay;
             if (P_table.getDelay(port, delay)) {
+	      printf("DV delay: %d\n", delay);
                 if (F_table.parse_DV_packet(packet, size, delay)) {
                     unsigned short packSize, target_id;
                     char *pack;
