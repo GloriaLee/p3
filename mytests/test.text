@@ -1,0 +1,7 @@
+Three nodes sending data packets at periodic intervals to each other.
+
+Tests whether
+
+1) Change the delay between nodes to see whether it will cause packet lost.
+
+2) Routes are correctly switched when a link goes down in distance vector and link state

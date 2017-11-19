@@ -321,8 +321,7 @@ bool Forwarding::parse_LS_packet(void* packet, unsigned short size) {
     F_Items[node_id].push_back(F_Item(node_id, cost, -1, seqNum));
   }
 
-  // return change == 1;
-  return false;
+  return change == 1;
 }
 
 // Update F_Items table when received a Pong or any delay change is detected

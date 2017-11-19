@@ -16,7 +16,7 @@ PortStatus :: ~PortStatus() {
 void PortStatus :: setPortNumbers(unsigned short num) {
     portNum = num;
     for (int i = 0; i < num; i++) {
-      ports.push_back(PortInfo(num, routerId, -1, -1));
+      ports.push_back(PortInfo(num, -1, -1, -1));
     }
 }
 
@@ -119,11 +119,12 @@ bool PortStatus :: checkPortNumFromRouteId(unsigned short id, unsigned short &nu
 }
 
 bool PortStatus :: getDelay(unsigned short port, unsigned int &dly) {
-    if (ports[port].timeStamp < 0) {
+    if (ports[port].timeStamp >= 0) {
+        dly = ports[port].delay;
+        return true;
+    } else {
         return false;
     }
-    dly = ports[port].delay;
-    return true;
 }
 
 
